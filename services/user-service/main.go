@@ -10,10 +10,9 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"user-service/internal/db"
+	"user-service/internal/user"
 
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -22,29 +21,46 @@ import (
 func main() {
 	_ = godotenv.Load()
 
-	// Connect to DB
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		log.Fatal("DATABASE_URL is not set")
-	}
-
-	db, err := sqlx.Connect("postgres", dbURL)
+	conn, err := db.Connect()
 	if err != nil {
-		log.Fatalf("Faled to connect to database: %v", err)
+		log.Fatal(err)
 	}
-	defer db.Close()
+	defer conn.Close()
 
-	log.Println("Connectedd  to Postgres database")
-
-	if err := runMigrations(db); err != nil {
-		log.Fatalf("Migration error: %v", err)
+	if err := db.Migrate(conn); err != nil {
+		log.Fatal(err)
 	}
 
 	// Create a multiplexer (router)
 	mux := http.NewServeMux()
+	repo := user.NewRepository(conn)
+	handler := user.NewHandler(repo)
 
 	// Add a route handler
-	mux.HandleFunc("/health", healthHandler(db))
+	mux.HandleFunc("/health", healthHandler(conn))
+	mux.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handler.ListUsers(w, r)
+		case http.MethodPost:
+			handler.CreateUser(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handler.GetUser(w, r)
+		case http.MethodPut:
+			handler.UpdateUser(w, r)
+		case http.MethodDelete:
+			handler.DeleteUser(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -107,27 +123,3 @@ func healthHandler(db *sqlx.DB) http.HandlerFunc {
 	}
 }
 
-func runMigrations(db *sqlx.DB) error {
-	log.Println("Running migrations...")
-
-	driver, err := postgres.WithInstance(db.DB, &postgres.Config{})
-	if err != nil {
-		return fmt.Errorf("could not start postgres driver: %w", err)
-	}
-
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://migrations",
-		"postgres",
-		driver,
-	)
-	if err != nil {
-		return fmt.Errorf("could not create migrate instance: %w", err)
-	}
-
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("migration failed: %w", err)
-	}
-
-	log.Println("Migrations complete.")
-	return nil
-}
