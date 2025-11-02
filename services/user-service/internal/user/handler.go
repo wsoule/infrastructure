@@ -3,6 +3,7 @@ package user
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 )
 
 type Handler struct {
@@ -51,17 +52,29 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request)  {
 // UpdateUser updates a user in the database
 func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		ID int32 `json:"id"`
 		Name string `json:"name"`
 		Email string `json:"email"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "name, email, and id are required", http.StatusBadRequest)
+	id := r.PathValue("id")
+	if id == "" {
+		http.Error(w, "id is required", http.StatusBadRequest)
 		return
 	}
 
-	user, err := h.repo.UpdateUser(r.Context(), input.ID, input.Name, input.Email)
+	// Parse id to int32
+	idInt, err := strconv.ParseInt(id, 10, 32)
+	if err != nil {
+		http.Error(w, "id must be an integer", http.StatusBadRequest)
+		return
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, "name, email are required", http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.repo.UpdateUser(r.Context(), int32(idInt), input.Name, input.Email)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -74,16 +87,21 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 // DeleteUser deletes a user from the database
 func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		ID int32 `json:"id"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+	
+	id := r.PathValue("id")
+	if id == "" {
 		http.Error(w, "id is required", http.StatusBadRequest)
 		return
 	}
 
-	err := h.repo.DeleteUser(r.Context(), input.ID)
+	// Parse id to int32
+	idInt, err := strconv.ParseInt(id, 10, 32)
+	if err != nil {
+		http.Error(w, "id must be an integer", http.StatusBadRequest)
+		return
+	}
+
+	err = h.repo.DeleteUser(r.Context(), int32(idInt))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -94,16 +112,20 @@ func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 // GetUser retrieves a user from the database
 func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		ID int32 `json:"id"`
-	}
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+	id := r.PathValue("id")
+	if id == "" {
 		http.Error(w, "id is required", http.StatusBadRequest)
 		return
 	}
 
-	user, err := h.repo.GetUser(r.Context(), input.ID)
+	// Parse id to int32
+	idInt, err := strconv.ParseInt(id, 10, 32)
+	if err != nil {
+		http.Error(w, "id must be an integer", http.StatusBadRequest)
+		return
+	}
+	user, err := h.repo.GetUser(r.Context(), int32(idInt))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
