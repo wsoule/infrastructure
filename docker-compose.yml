@@ -13,6 +13,17 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  # --- CACHE ---
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
   # --- USER SERVICE ---
   user-service:
     build:
@@ -28,34 +39,36 @@ services:
     restart: always
 
   # # --- PRODUCT SERVICE ---
-  # product-service:
-  #   build:
-  #     context: ./services/product-service
-  #     dockerfile: Dockerfile
-  #   container_name: product-service
-  #   depends_on:
-  #     - postgres
-  #   env_file:
-  #     - ./services/product-service/.env
-  #   ports:
-  #     - "8082:8082"
-  #   restart: always
-  #
-  # # --- API GATEWAY ---
-  # api-gateway:
-  #   build:
-  #     context: ./api-gateway
-  #     dockerfile: Dockerfile
-  #   container_name: api-gateway
-  #   depends_on:
-  #     - user-service
-  #     - product-service
-  #   env_file:
-  #     - ./api-gateway/.env
-  #   ports:
-  #     - "8080:8080"
-  #   restart: always
+  product-service:
+    build:
+      context: ./services/product-service
+      dockerfile: Dockerfile
+    container_name: product-service
+    depends_on:
+      - postgres
+    env_file:
+      - ./services/product-service/.env.docker
+    ports:
+      - "8082:8082"
+    restart: always
+
+  # --- API GATEWAY ---
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    depends_on:
+      - user-service
+      - product-service
+      - redis
+    env_file:
+      - ./api-gateway/.env.docker
+    ports:
+      - "8080:8080"
+    restart: always
 
 volumes:
   postgres_data:
+  redis_data:
 
