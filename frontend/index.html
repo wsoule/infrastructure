@@ -3,156 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Microservices Demo</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            padding: 40px;
-            max-width: 800px;
-            width: 100%;
-        }
-        h1 { color: #333; margin-bottom: 10px; }
-        p { color: #666; margin-bottom: 30px; }
-        .section {
-            margin-bottom: 30px;
-            padding: 20px;
-            background: #f7f9fc;
-            border-radius: 8px;
-        }
-        h2 { color: #667eea; margin-bottom: 15px; font-size: 18px; }
-        button {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-right: 10px;
-            margin-bottom: 10px;
-            transition: background 0.2s;
-        }
-        button:hover { background: #5568d3; }
-        .response {
-            margin-top: 15px;
-            padding: 15px;
-            background: white;
-            border-radius: 6px;
-            border-left: 4px solid #667eea;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            white-space: pre-wrap;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        .error { border-left-color: #e74c3c; }
-        .success { border-left-color: #2ecc71; }
-    </style>
+    <title>API Gateway Demo</title>
 </head>
 <body>
-    <div class="container">
-        <h1>Microservices Demo App</h1>
-        <p>Testing API Gateway, User Service, and Product Service</p>
+    <h1>API Gateway Reverse Proxy Demo</h1>
+    <p>All requests go through the API Gateway at <strong>http://localhost:8080</strong></p>
+    <p>The gateway routes requests to the appropriate backend microservices:</p>
+    <ul>
+        <li><code>/api/users/*</code> → User Service (port 8081)</li>
+        <li><code>/api/products/*</code> → Product Service (port 8082)</li>
+    </ul>
 
-        <div class="section">
-            <h2>User Service</h2>
-            <button onclick="getUsers()">Get All Users</button>
-            <button onclick="createUser()">Create User</button>
-            <button onclick="getUser(1)">Get User #1</button>
-            <div id="user-response" class="response" style="display:none;"></div>
-        </div>
+    <hr>
 
-        <div class="section">
-            <h2>Product Service</h2>
-            <button onclick="getProducts()">Get All Products</button>
-            <button onclick="createProduct()">Create Product</button>
-            <button onclick="getProduct(1)">Get Product #1</button>
-            <div id="product-response" class="response" style="display:none;"></div>
-        </div>
+    <h2>Gateway Health Check</h2>
+    <div id="health-status">Loading health status...</div>
 
-        <div class="section">
-            <h2>Health Checks</h2>
-            <button onclick="checkHealth('gateway')">Gateway Health</button>
-            <button onclick="checkHealth('users')">User Service Health</button>
-            <button onclick="checkHealth('products')">Product Service Health</button>
-            <div id="health-response" class="response" style="display:none;"></div>
-        </div>
-    </div>
+    <hr>
+
+    <h2>Users (via API Gateway)</h2>
+    <h3>All Users</h3>
+    <div id="users-list">Loading users...</div>
+
+    <h3>Create New User</h3>
+    <form id="create-user-form">
+        <label>Name: <input type="text" name="name" required></label><br>
+        <label>Email: <input type="email" name="email" required></label><br>
+        <button type="submit">Create User</button>
+    </form>
+    <div id="create-user-response"></div>
+
+    <h3>Get User by ID</h3>
+    <form id="get-user-form">
+        <label>User ID: <input type="number" name="id" required></label>
+        <button type="submit">Get User</button>
+    </form>
+    <div id="get-user-response"></div>
+
+    <hr>
+
+    <h2>Products (via API Gateway)</h2>
+    <h3>All Products</h3>
+    <div id="products-list">Loading products...</div>
+
+    <h3>Create New Product</h3>
+    <form id="create-product-form">
+        <label>Name: <input type="text" name="name" required></label><br>
+        <label>Description: <input type="text" name="description"></label><br>
+        <label>Price: <input type="number" step="0.01" name="price" required></label><br>
+        <label>Stock: <input type="number" name="stock" required></label><br>
+        <button type="submit">Create Product</button>
+    </form>
+    <div id="create-product-response"></div>
+
+    <h3>Get Product by ID</h3>
+    <form id="get-product-form">
+        <label>Product ID: <input type="number" name="id" required></label>
+        <button type="submit">Get Product</button>
+    </form>
+    <div id="get-product-response"></div>
 
     <script>
-        const API_URL = 'http://localhost:8080';
+        const API_GATEWAY_URL = 'http://localhost:8080';
 
+        // Auto-load data when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            loadHealthStatus();
+            loadUsers();
+            loadProducts();
+        });
+
+        // Generic API call function
         async function apiCall(endpoint, method = 'GET', body = null) {
             try {
                 const options = {
                     method,
                     headers: { 'Content-Type': 'application/json' }
                 };
-                if (body) options.body = JSON.stringify(body);
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
 
-                const response = await fetch(`${API_URL}${endpoint}`, options);
+                const response = await fetch(`${API_GATEWAY_URL}${endpoint}`, options);
                 const data = await response.json();
-                return { success: response.ok, data };
+                return { success: response.ok, status: response.status, data };
             } catch (error) {
                 return { success: false, error: error.message };
             }
         }
 
-        function showResponse(elementId, data, success = true) {
-            const el = document.getElementById(elementId);
-            el.style.display = 'block';
-            el.className = success ? 'response success' : 'response error';
-            el.textContent = JSON.stringify(data, null, 2);
+        // Health Check
+        async function loadHealthStatus() {
+            const result = await apiCall('/health');
+            const el = document.getElementById('health-status');
+            if (result.success) {
+                el.innerHTML = '<strong>Gateway Status:</strong> ' + result.data.status + '<br>' +
+                               '<strong>Services:</strong><pre>' + JSON.stringify(result.data.services, null, 2) + '</pre>';
+            } else {
+                el.innerHTML = '<strong>Error:</strong> ' + (result.error || 'Failed to check health');
+            }
         }
 
-        async function getUsers() {
+        // Users
+        async function loadUsers() {
             const result = await apiCall('/api/users');
-            showResponse('user-response', result.data, result.success);
+            const el = document.getElementById('users-list');
+            if (result.success) {
+                if (result.data && result.data.length > 0) {
+                    el.innerHTML = '<pre>' + JSON.stringify(result.data, null, 2) + '</pre>';
+                } else {
+                    el.innerHTML = '<em>No users found</em>';
+                }
+            } else {
+                el.innerHTML = '<strong>Error:</strong> ' + (result.error || JSON.stringify(result.data));
+            }
         }
 
-        async function createUser() {
-            const user = { name: 'John Doe', email: 'john@example.com' };
+        document.getElementById('create-user-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const user = {
+                name: formData.get('name'),
+                email: formData.get('email')
+            };
             const result = await apiCall('/api/users', 'POST', user);
-            showResponse('user-response', result.data, result.success);
-        }
+            const el = document.getElementById('create-user-response');
+            if (result.success) {
+                el.innerHTML = '<strong>Success:</strong><pre>' + JSON.stringify(result.data, null, 2) + '</pre>';
+                e.target.reset();
+                loadUsers(); // Reload the list
+            } else {
+                el.innerHTML = '<strong>Error:</strong> ' + (result.error || JSON.stringify(result.data));
+            }
+        });
 
-        async function getUser(id) {
+        document.getElementById('get-user-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const id = formData.get('id');
             const result = await apiCall(`/api/users/${id}`);
-            showResponse('user-response', result.data, result.success);
-        }
+            const el = document.getElementById('get-user-response');
+            if (result.success) {
+                el.innerHTML = '<strong>User #' + id + ':</strong><pre>' + JSON.stringify(result.data, null, 2) + '</pre>';
+            } else {
+                el.innerHTML = '<strong>Error:</strong> ' + (result.error || JSON.stringify(result.data));
+            }
+        });
 
-        async function getProducts() {
+        // Products
+        async function loadProducts() {
             const result = await apiCall('/api/products');
-            showResponse('product-response', result.data, result.success);
+            const el = document.getElementById('products-list');
+            if (result.success) {
+                if (result.data && result.data.length > 0) {
+                    el.innerHTML = '<pre>' + JSON.stringify(result.data, null, 2) + '</pre>';
+                } else {
+                    el.innerHTML = '<em>No products found</em>';
+                }
+            } else {
+                el.innerHTML = '<strong>Error:</strong> ' + (result.error || JSON.stringify(result.data));
+            }
         }
 
-        async function createProduct() {
-            const product = { name: 'Sample Product', price: 29.99, stock: 100 };
+        document.getElementById('create-product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const product = {
+                name: formData.get('name'),
+                description: formData.get('description'),
+                price: parseFloat(formData.get('price')),
+                stock: parseInt(formData.get('stock'))
+            };
             const result = await apiCall('/api/products', 'POST', product);
-            showResponse('product-response', result.data, result.success);
-        }
+            const el = document.getElementById('create-product-response');
+            if (result.success) {
+                el.innerHTML = '<strong>Success:</strong><pre>' + JSON.stringify(result.data, null, 2) + '</pre>';
+                e.target.reset();
+                loadProducts(); // Reload the list
+            } else {
+                el.innerHTML = '<strong>Error:</strong> ' + (result.error || JSON.stringify(result.data));
+            }
+        });
 
-        async function getProduct(id) {
+        document.getElementById('get-product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const id = formData.get('id');
             const result = await apiCall(`/api/products/${id}`);
-            showResponse('product-response', result.data, result.success);
-        }
-
-        async function checkHealth(service) {
-            const result = await apiCall(`/health/${service}`);
-            showResponse('health-response', result.data, result.success);
-        }
+            const el = document.getElementById('get-product-response');
+            if (result.success) {
+                el.innerHTML = '<strong>Product #' + id + ':</strong><pre>' + JSON.stringify(result.data, null, 2) + '</pre>';
+            } else {
+                el.innerHTML = '<strong>Error:</strong> ' + (result.error || JSON.stringify(result.data));
+            }
+        });
     </script>
 </body>
 </html>
