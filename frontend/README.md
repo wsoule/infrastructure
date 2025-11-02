@@ -23,12 +23,11 @@ npm run dev
 
 The app will be available at `http://localhost:5173`
 
-## Railway Deployment
+## Railway Deployment (Docker)
 
 ### Configuration
 
-1. **Build Command**: `npm install && npm run build`
-2. **Start Command**: `npm start`
+Railway will automatically detect and use the Dockerfile.
 
 ### Environment Variables
 
@@ -36,16 +35,31 @@ Set the following environment variable in Railway:
 
 - `VITE_API_GATEWAY_URL` - Your API Gateway URL (e.g., `https://your-api-gateway.railway.app`)
 
-**Important**: Railway will automatically set the `PORT` variable. The start script will use it.
+**Important**: This environment variable must be set at **build time** since Vite bakes env vars into the bundle.
 
 ### Deployment Steps
 
 1. Push your code to a Git repository
 2. Create a new project in Railway
 3. Connect your repository
-4. Set the root directory to `frontend` (if not deploying from monorepo root)
+4. Set the root directory to `frontend` (if deploying from monorepo root)
 5. Add the environment variable `VITE_API_GATEWAY_URL`
-6. Deploy!
+6. Railway will automatically build and deploy using the Dockerfile
+7. Railway will set the `PORT` environment variable automatically
+
+## Docker Build & Run Locally
+
+Build the Docker image:
+```bash
+docker build -t api-gateway-frontend .
+```
+
+Run the container:
+```bash
+docker run -p 3000:5173 api-gateway-frontend
+```
+
+Access at `http://localhost:3000`
 
 ## Build for Production
 

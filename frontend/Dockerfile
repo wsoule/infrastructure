@@ -1,7 +1,22 @@
-FROM nginx:alpine
+# Build stage
+FROM node:20-alpine
 
-COPY index.html /usr/share/nginx/html/
+WORKDIR /app
 
-EXPOSE 80
+# Copy package files
+COPY package.json package-lock.json* ./
 
-CMD ["nginx", "-g", "daemon off;"]
+# Install dependencies
+RUN npm install
+
+# Copy source files
+COPY . .
+
+# Build the app
+RUN npm run build
+
+# Expose port (Railway will use PORT env var)
+EXPOSE 5173
+
+# Start the preview server
+CMD ["npm", "start"]
