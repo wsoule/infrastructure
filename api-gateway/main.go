@@ -28,7 +28,7 @@ func main() {
 	}
 
 	http.HandleFunc("/health", gateway.healthCheck)
-	http.HandleFunc("/", gateway.routeRequest)
+	http.HandleFunc("/api/", gateway.routeRequest)
 
 	log.Printf("Starting API Gateway on :8080")
 	log.Printf("Health check available at: http://localhost:8080/health")
@@ -92,8 +92,7 @@ func (g *Gateway) healthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g *Gateway) routeRequest(w http.ResponseWriter, r *http.Request) {
-	// Step 1: Check if path starts with /api/
-	// If not → return ___
+	// Path validation - should already start with /api/ due to HandleFunc pattern
 	if !strings.HasPrefix(r.URL.Path, "/api/") {
 		http.Error(w, "Invalid path", http.StatusNotFound)
 		return

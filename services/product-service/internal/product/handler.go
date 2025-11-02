@@ -3,6 +3,7 @@ package product
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 )
 
 type Handler struct {
@@ -53,19 +54,31 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 // UpdateProduct updates a product in the database
 func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		ID          int32  `json:"id"`
 		Name        string `json:"name"`
 		Description string `json:"description"`
 		Price       string `json:"price"`
 		Stock       int32  `json:"stock"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "id, name, description, price, and stock are required", http.StatusBadRequest)
+	id := r.PathValue("id")
+	if id == "" {
+		http.Error(w, "id is required", http.StatusBadRequest)
 		return
 	}
 
-	product, err := h.repo.UpdateProduct(r.Context(), input.ID, input.Name, input.Description, input.Price, input.Stock)
+	// Parse id to int32
+	idInt, err := strconv.ParseInt(id, 10, 32)
+	if err != nil {
+		http.Error(w, "id must be an integer", http.StatusBadRequest)
+		return
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, "name, description, price, and stock are required", http.StatusBadRequest)
+		return
+	}
+
+	product, err := h.repo.UpdateProduct(r.Context(), int32(idInt), input.Name, input.Description, input.Price, input.Stock)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -78,16 +91,21 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 
 // DeleteProduct deletes a product from the database
 func (h *Handler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		ID int32 `json:"id"`
-	}
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+	id := r.PathValue("id")
+	if id == "" {
 		http.Error(w, "id is required", http.StatusBadRequest)
 		return
 	}
 
-	err := h.repo.DeleteProduct(r.Context(), input.ID)
+	// Parse id to int32
+	idInt, err := strconv.ParseInt(id, 10, 32)
+	if err != nil {
+		http.Error(w, "id must be an integer", http.StatusBadRequest)
+		return
+	}
+
+	err = h.repo.DeleteProduct(r.Context(), int32(idInt))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -98,20 +116,21 @@ func (h *Handler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 
 // GetProduct retrieves a product from the database
 func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		ID int32 `json:"id"`
-	}
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+	id := r.PathValue("id")
+	if id == "" {
 		http.Error(w, "id is required", http.StatusBadRequest)
 		return
 	}
 
-	// Alternative: Parse from URL path parameter
-	// id := r.PathValue("id")
-	// idInt, err := strconv.Atoi(id)
+	// Parse id to int32
+	idInt, err := strconv.ParseInt(id, 10, 32)
+	if err != nil {
+		http.Error(w, "id must be an integer", http.StatusBadRequest)
+		return
+	}
 
-	product, err := h.repo.GetProduct(r.Context(), input.ID)
+	product, err := h.repo.GetProduct(r.Context(), int32(idInt))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
