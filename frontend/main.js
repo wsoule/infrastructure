@@ -1,4 +1,4 @@
-const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080';
+const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL || 'https://infra.api.wyat.me';
 
 // Auto-load data when page loads
 window.addEventListener('DOMContentLoaded', () => {
