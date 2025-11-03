@@ -84,6 +84,21 @@ document.getElementById('get-user-form').addEventListener('submit', async (e) =>
   }
 });
 
+document.getElementById('delete-user-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const id = formData.get('id');
+  const result = await apiCall(`/api/users/${id}`, 'DELETE');
+  const el = document.getElementById('delete-user-response');
+  if (result.success) {
+    el.innerHTML = '<strong>Success:</strong> User #' + id + ' deleted';
+    e.target.reset();
+    loadUsers(); // Reload the list
+  } else {
+    el.innerHTML = '<strong>Error:</strong> ' + (result.error || JSON.stringify(result.data));
+  }
+});
+
 // Products
 async function loadProducts() {
   const result = await apiCall('/api/products');
@@ -127,6 +142,21 @@ document.getElementById('get-product-form').addEventListener('submit', async (e)
   const el = document.getElementById('get-product-response');
   if (result.success) {
     el.innerHTML = '<strong>Product #' + id + ':</strong><pre>' + JSON.stringify(result.data, null, 2) + '</pre>';
+  } else {
+    el.innerHTML = '<strong>Error:</strong> ' + (result.error || JSON.stringify(result.data));
+  }
+});
+
+document.getElementById('delete-product-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const id = formData.get('id');
+  const result = await apiCall(`/api/products/${id}`, 'DELETE');
+  const el = document.getElementById('delete-product-response');
+  if (result.success) {
+    el.innerHTML = '<strong>Success:</strong> Product #' + id + ' deleted';
+    e.target.reset();
+    loadProducts(); // Reload the list
   } else {
     el.innerHTML = '<strong>Error:</strong> ' + (result.error || JSON.stringify(result.data));
   }

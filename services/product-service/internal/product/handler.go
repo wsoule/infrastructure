@@ -29,10 +29,10 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		Price       string `json:"price"`
-		Stock       int32  `json:"stock"`
+		Name        string  `json:"name"`
+		Description string  `json:"description"`
+		Price       float64 `json:"price"`
+		Stock       int32   `json:"stock"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -40,7 +40,9 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	product, err := h.repo.CreateProduct(r.Context(), input.Name, input.Description, input.Price, input.Stock)
+	// Convert price to string for repository (to maintain precision with DECIMAL)
+	priceStr := strconv.FormatFloat(input.Price, 'f', 2, 64)
+	product, err := h.repo.CreateProduct(r.Context(), input.Name, input.Description, priceStr, input.Stock)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -54,10 +56,10 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 // UpdateProduct updates a product in the database
 func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		Price       string `json:"price"`
-		Stock       int32  `json:"stock"`
+		Name        string  `json:"name"`
+		Description string  `json:"description"`
+		Price       float64 `json:"price"`
+		Stock       int32   `json:"stock"`
 	}
 
 	id := r.PathValue("id")
@@ -78,7 +80,9 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	product, err := h.repo.UpdateProduct(r.Context(), int32(idInt), input.Name, input.Description, input.Price, input.Stock)
+	// Convert price to string for repository (to maintain precision with DECIMAL)
+	priceStr := strconv.FormatFloat(input.Price, 'f', 2, 64)
+	product, err := h.repo.UpdateProduct(r.Context(), int32(idInt), input.Name, input.Description, priceStr, input.Stock)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
